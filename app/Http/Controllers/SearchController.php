@@ -4,11 +4,11 @@ namespace App\Http\Controllers;
 
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use MarcReichel\IGDBLaravel\Builder as IGDB;
 use MarcReichel\IGDBLaravel\Models\Cover;
 use MarcReichel\IGDBLaravel\Models\Game;
 use MarcReichel\IGDBLaravel\Models\Platform;
+
+use Illuminate\Support\Facades\Cache;
 
 class SearchController extends Controller
 {
@@ -21,12 +21,12 @@ class SearchController extends Controller
 
     public function __invoke(Request $request)
     {
-        $search_field = request('search'); // busca lo introducido en el form, transformado en slug
-        $request = slugify($search_field);
-
-        /* query Builders para cuando no usamos el wrapper */
+        /* query Builders si no usamos el wrapper */
         // $igdb = new IGDB('games');
         // $platforms = new IGDB('platforms');
+       
+        $search_field = request('search'); // busca lo introducido en el form, transformado en slug
+        $request = slugify($search_field);
 
         /**
          * TODO redirect a página TRENDING GAMES
@@ -40,46 +40,68 @@ class SearchController extends Controller
             return view('querys.queryErrors', compact('errors'));
         }
 
-        /**
-         * query a Games según el formulario de búsqueda, ordenándolos por rating (máximo 50, modificable)
-         * TODO mostrar resultados variables por página
-         */
+        /* si la búsqueda especificada existe en la cache, devuelve esa búsqueda... */
+        if (Cache::has($request)) {
+            $games_cache = Cache::get($request);
+            $cached = '*';
+            return view('querys.queryResult', $games_cache)->with('search_field', $search_field)->with('cached', $cached);
+        } else {
 
-        $games = Game::orderBy('rating', 'desc')->where('rating', '!=', null)->where('slug', 'like', '%' . $request . '%')->limit(50)->get();
-        $games == null ? view('trendingGames') : 'Buscando en la base de datos...';
-        /**
-         * almacena en arrays los elementos que a los que haremos query en otras tablas (Platform y Covers)
-         * 
-         */
-        $game_covers_arr = array();
-        $game_platforms_arr = array();
+            /**
+             * query a Games según el formulario de búsqueda, ordenándolos por rating (máximo 50, modificable)
+             * TODO mostrar resultados variables por página
+             */
+            $games = Game::orderBy('rating', 'desc')->where('rating', '!=', null)->where('slug', 'like', '%' . $request . '%')->limit(50)->get();
+            $games == null ? view('trendingGames') : 'Buscando en la base de datos...';
 
-        foreach ($games as $game) {
-            $slug_code = $game->slug;
+            /**
+             * almacena en arrays los elementos que a los que haremos query en otras tablas (Platform y Covers)
+             */
+            $game_covers_arr = array();
+            $game_platforms_arr = array();
 
-            //portadas
-            $game_cover = Game::select('cover')->where('slug', $slug_code)->first();
-            if ($game_cover->cover != null) array_push($game_covers_arr, $game_cover->cover);
+            foreach ($games as $game) {
+                $slug_code = $game->slug;
 
-            //plataformas
-            $game_plataformas = Game::select('platforms')->where('slug', $slug_code)->get();
-            if ($game_plataformas != null) {
-                foreach ($game_plataformas as $plataforma) {
-                    if ($plataforma->platforms != null) {
-                        foreach ($plataforma->platforms as $plataforma_ind) {
-                            in_array($plataforma_ind, $game_platforms_arr) ? 'Plataforma ya existente' : array_push($game_platforms_arr, $plataforma_ind);
+                //portadas
+                $game_cover = Game::select('cover')->where('slug', $slug_code)->first();
+                if ($game_cover->cover != null) array_push($game_covers_arr, $game_cover->cover);
+
+                //plataformas
+                $game_plataformas = Game::select('platforms')->where('slug', $slug_code)->get();
+                if ($game_plataformas != null) {
+                    foreach ($game_plataformas as $plataforma) {
+                        if ($plataforma->platforms != null) {
+                            foreach ($plataforma->platforms as $plataforma_ind) {
+                                in_array($plataforma_ind, $game_platforms_arr) ? 'Plataforma ya existente' : array_push($game_platforms_arr, $plataforma_ind);
+                            }
                         }
                     }
                 }
             }
+
+            $game_covers_arr == null ? $portadas = null : $portadas = Cover::whereIn('id', $game_covers_arr)->limit(50)->get();
+            $game_platforms_arr == null ? $plataformas = null : $plataformas = Platform::whereIn('id', $game_platforms_arr)->limit(170)->get();
+
+            // almacena en la cache la búsqueda y muestra el resultado del query
+            Cache::put($request, compact(['games', 'portadas', 'plataformas']));
+            return view('querys.queryResult', compact(['games', 'portadas', 'plataformas']))->with('search_field', $search_field);
+           
         }
 
+        // addToCache($games, 'game_');
+        // addToCache($portadas, 'portada_');
+        // addToCache($plataformas, 'plataforma_');
 
-        $game_covers_arr == null ? $portadas = null : $portadas = Cover::whereIn('id', $game_covers_arr)->limit(50)->get();
-        $game_platforms_arr == null ? $plataformas = null : $plataformas = Platform::whereIn('id', $game_platforms_arr)->limit(170)->get();
+        // $games = getFromCache('game_');
+        // $portadas = getFromCache('portada_');
+        // $plataformas = getFromCache('plataforma_');
 
+        //return compact('plataformas');
+        //return compact('portadas');
+        // return view('querys.queryResult', compact(['games', 'portadas', 'plataformas']))->with('search_field', $search_field);
 
-        return view('querys.queryResult', compact(['games', 'portadas', 'plataformas']))->with('search_field', $search_field);
+        //return compact('games');
     }
 }
         // return $lista_plataformas;

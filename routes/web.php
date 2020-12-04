@@ -69,8 +69,9 @@ Route::resource('portfolio', 'PortfolioController')->name('index', 'portfolio');
 //Route::resource('portfolio', PortfolioController::class)->name('index', 'portfolio');
 Route::post('contacto', 'MensajesController@store')->name('contacto');
 
-
 Route::get('/twitch', 'TwitchController@store')->name('twitch');
-Route::post('/busqueda', 'SearchController')->name('search');
 
+Route::post('/busqueda', 'SearchController')->name('search');
 Route::get('/gamepage/{slug}', 'GamePageController')->name('gamepage'); 
+
+Route::post('/', HomeController::class)->name('flush');

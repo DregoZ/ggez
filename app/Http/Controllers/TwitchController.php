@@ -60,17 +60,49 @@ class TwitchController extends Controller
       
         //      return $games;
         
-        $date = strtotime("2015-01-01") * 1000;
-        $gamedb = Game:: orderBy('rating', 'desc')->where('rating', '!=', null)->where('first_release_date', '>=', $date)->limit(50)->get();
+        /** EJEMPLO CACHE */
+        
+        /* no almacena en el [0] ?? */
+        
+       
+        //Cache::forget('example');
+        if (Cache::has('example')) {
+            $cached = '*';
+            $game_example = Cache::get('example');
+            return view('twitch', $game_example)->with('cached', $cached);
+        } else {
+            
+            $date = strtotime("2015-01-01") * 1000;
+            $game_example = Game:: orderBy('rating', 'desc')->where('rating', '!=', null)->where('first_release_date', '>=', $date)->limit(50)->get();
+           
+            Cache::put('example', compact('game_example'));
+            
+            return view('twitch', compact('game_example'));
+        }
 
-        Cache::put('gamedb', $gamedb, 3600);
+        //return $example_cache;
+        //return compact('game_example');
+
+        // $gamekey = 1;
+        //     foreach ($gamedb as $game) {
+        //         // OJO!! si pasamos un array debemos transformarlo en coleccion -> collect()
+        //         //    Cache::put($gamekey, ['id' => $game->id, 'name' => $game->name, 'rating'=> $game->rating], 3600);
+        //         Cache::put($gamekey, $game);
+        //         $gamekey++;
+        //     }
         
-        $cached_query = Cache::get('gamed');
-        
+     
+    
         // juegos con nombre mario
         //$games = $cached_query->orderBy('rating', 'desc')->where('rating', '!=', null)->where('slug', 'like', '%mario%')->limit(50)->get();
 
-        return $cached_query;
+        //return $gamecollection;
+       // return compact('gamecollection');
+       
+       //return view('twitch', compact('gamecollection'));
+      
+
+     //   return gettype($gamedb);
    
     }
 

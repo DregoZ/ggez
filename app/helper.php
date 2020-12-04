@@ -1,4 +1,7 @@
 <?php
+
+use Illuminate\Support\Facades\Cache;
+
 /* sets link como active si nos encontramos en la ruta a donde apunta */
 function setLinkActivo($nombreRuta) 
 {

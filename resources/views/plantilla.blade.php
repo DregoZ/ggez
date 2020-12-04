@@ -17,6 +17,7 @@
 
     @include('partials.nav')
     @yield('contenido')
+    @yield('errorlog')
 
 </body>
 
