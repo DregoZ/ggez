@@ -85,7 +85,7 @@ class SearchController extends Controller
 
             // almacena en la cache la búsqueda y muestra el resultado del query
             Cache::put($request, compact(['games', 'portadas', 'plataformas']));
-            //return view('querys.queryResult', compact(['games', 'portadas', 'plataformas']))->with('search_field', $search_field);
+            return view('querys.queryResult', compact(['games', 'portadas', 'plataformas']))->with('search_field', $search_field);
            
         }
 
